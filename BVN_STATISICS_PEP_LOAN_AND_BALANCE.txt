@@ -1,0 +1,177 @@
+----PEP BALANCE-----
+Create table pep_bal nologging nocache parallel(degree 200)as
+select /*+paralll(64)*/ a.ac_desc ACCOUNT_NAME, a.cust_ac_no ACCOUNT_NUMBER, get_cr_to_lcy1(a.cust_ac_no,'01-apr-2023','30-apr-2023') CREDIT_TURNOVER ,a.lcy_curr_balance  "LCY_CURR_BALANCE AS AT EOM" 
+--bonig.get_accbal_history (a.cust_ac_no, '28-feb-2019') "LCY_CURR_BALANCE AS AT EOM FEB,2019"
+from fcubsnig.sttm_cust_account a, misuser.pepcustomers b
+where b.account_number = a.cust_ac_no
+and a.record_stat = 'O'
+
+-----PEP LOAN------
+Create table pep_loan nologging nocache parallel(degree 200)as
+select /*+paralll(64)*/distinct get_branch_name(a.branch_code) brn_name, a.cust_ac_no,ac_desc, a.account_class,c.account_number as contract_ref_no,
+ GET_OUTSTANDING_LOAN_BAL(c.ACCOUNT_NUMBER) outstdn_loan_bal   from    sttm_cust_account a,
+fcubsnig.CLTB_account_master c, misuser.pepcustomers b
+where
+ a.cust_ac_no=c.dr_prod_ac
+ and a.record_stat='O'
+ AND a.CUST_AC_NO = b.account_number
+
+and GET_OUTSTANDING_LOAN_BAL(c.ACCOUNT_NUMBER) >0
+
+----BVN------
+
+/*Total Number of Customers (database)*/
+Create table tot_cust nologging nocache parallel(degree 200)as
+select /*+PARALLEL(64)*/ count(distinct b.cust_no) TOTAL_CUSTOMERS
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and b.record_stat='O'
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOTAL_CUSTOMERS
+
+
+/*Total Number of Customers with BVN (Please include Xpress Account)*/
+
+Create table tot_cust_wt_bvn nologging nocache parallel(degree 200)as
+select /*+paralll(64)*/ count(distinct b.cust_no) tot_cust_wt_bvn  
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and a.udf_2 is not null
+and b.record_stat='O'
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM tot_cust_wt_bvn 
+
+/*Total Number of Customers with Xpress Account only ( i.e Customer has no other account in the bank except Xpress Acct)*/
+create table temp_xpress nologging nocache parallel (degree 200) as
+select /*+PARALLEL(64)*/  distinct b.cust_no TOT_CUST_XPRESS_ACCTS 
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and b.record_stat='O'
+and b.branch_code in ('800','801')
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U')
+
+minus
+
+select /*+paralll(64)*/ distinct b.cust_no "CUST_NO" 
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and b.record_stat='O'
+and b.branch_code not in ('800','801')
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+
+select count(distinct cust_no)TOT_CUST_XPRESS_ACCTS from temp_xpress
+
+
+
+/*Total Number of Customers without BVN (On PND) (Please exclude Xpress Account)*/
+
+CREATE TABLE TOT_CUST_NO_BVN_ON_PND AS 
+select /*+PARALLEL(64)*/ count(distinct b.cust_no) TOT_CUST_NO_BVN_ON_PND 
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and a.udf_2 is null
+and b.ac_stat_no_dr = 'Y'
+and b.record_stat='O'
+and b.branch_code not in ('800','801')
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOT_CUST_NO_BVN_ON_PND
+
+
+
+/*Total Number of Customers without BVN (not On PND) (Please include Xpress Account)*/
+
+CREATE TABLE TOT_CUST_NOBVN_NOPND NOLOGGING NOCACHE PARALLEL(DEGREE 100) AS 
+
+select /*+PARALLEL(64)*/count(distinct b.cust_no) TOT_CUST_NOBVN_NOPND 
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and a.udf_2 is null
+and b.ac_stat_no_dr <> 'Y'
+and b.record_stat='O'
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOT_CUST_NOBVN_NOPND;
+
+
+
+/*Total Number of Customers with Xpress Account and bvn)*/
+
+CREATE TABLE TOT_CUST_WT_XPRESS_AND_BVN NOLOGGING NOCACHE PARALLEL(DEGREE 100) AS 
+select /*+PARALLEL(64)*/ count(distinct b.cust_no) TOT_CUST_WT_XPRESS_AND_BVN 
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and b.record_stat='O'
+and b.branch_code in ('800','801')
+and a.udf_2 is not null
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOT_CUST_WT_XPRESS_AND_BVN;
+
+
+
+/*Total Number of Customers with Xpress Account 
+without bvn and on pnd)*/ 
+
+CREATE TABLE TOT_CUST_WIT_XPRESS_NO_BVN_ON_PND NOLOGGING NOCACHE PARALLEL(DEGREE 100) AS 
+select /*+paralll(64)*/ count(distinct b.cust_no) "Total Number of CUSTOMER (database)" 
+from fcubsnig.sttm_customer a, fcubsnig.sttm_cust_account b 
+where a.customer_no = b.cust_no
+and b.record_stat='O'
+and b.branch_code in ('800','801')
+and a.udf_2 is null
+and b.ac_stat_no_dr = 'Y'
+and b.account_class not in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOT_CUST_WIT_XPRESS_NO_BVN_ON_PND
+
+
+
+/*Total Number of Accounts on pnd)*/ 
+
+CREATE TABLE TOT_ACCTS_ON_PND NOLOGGING NOCACHE PARALLEL(DEGREE 100) AS 
+select /*+PARALLEL(64)*/ count(b.cust_ac_no) TOT_ACCTS_ON_PND
+from fcubsnig.sttm_cust_account b 
+where b.record_stat='O'
+and b.ac_stat_no_dr = 'Y'
+and b.account_class in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOT_ACCTS_ON_PND;
+
+
+/*Total Number of Accounts on pnd in a particular month)*/ 
+CREATE TABLE TOT_ACCTS_ON_PND_MAY NOLOGGING NOCACHE PARALLEL(DEGREE 100) AS 
+select /*+PARALLEL(64)*/ count(b.cust_ac_no) TOT_ACCTS_ON_PND_MAY 
+from fcubsnig.sttm_cust_account b 
+where b.record_stat='O'
+and b.ac_stat_no_dr = 'Y'
+AND CHECKER_DT_STAMP BETWEEN '01-MAY-2023' AND '31-MAY-2023'
+and b.account_class NOT in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in  ('S','U');
+
+SELECT * FROM TOT_ACCTS_ON_PND_MAY
+
+
+CREATE TABLE TOT_ACCTS_ON_PND_3YRS_NO_ACTIVITY NOLOGGING NOCACHE PARALLEL(DEGREE 200)AS
+select /*+PARALLEL(64)*/ count(b.cust_ac_no) TOT_ACCTS_ON_PND_3YRS_NO_ACTIVITY
+from fcubsnig.sttm_cust_account b
+where b.record_stat='O'
+and b.ac_stat_no_dr = 'Y'
+and b.account_class in ('GHCPOL','GHDFAA','GHARRE','GHSUND','GHARRE','RAPIDT','GHCINT','GHCAFI','GHCINV','ATMOFF','GHAPPA','GHCPOS','GHINTF')
+and b.account_type in ('S','U')
+and b.date_last_dr <= '30-JUN-2022' ---year-3, current_month
+and branch_code not in ('G97','G98','NIG','800','900');
+
+SELECT * FROM TOT_ACCTS_ON_PND_3YRS_NO_ACTIVITY;

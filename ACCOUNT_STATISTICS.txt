@@ -1,0 +1,49 @@
+-- ACCOUNT STATISTICS
+-- no bvn by acct
+CREATE TABLE NO_BVN_BY_ACCOUNT NOLOGGING NOCACHE PARALLEL(DEGREE 100) AS
+select /*parallel(64)*/ account_class, COUNT(distinct cust_ac_no)  tot_cust from sttm_cust_account 
+where get_cust_bvn(cust_no) is null AND 
+record_stat = 'O' and account_type !='Y' and account_class not in 
+('ECOAXA','ECOSWA','ECOWA2','ECOWAL','GHSXSA','GHSXSB','EASYSA','GHEASA','GHECMA',
+'GHMASS','GHSANF','GHSDPA','GHSEAS','GHSMIO','GHSMX1','GHSMXA','GHSSAA','GHSTAA')
+GROUP BY ACCOUNT_CLASS
+
+
+--- NO BVN BY CUSTOMER
+
+create table no_bvn_cust nologging nocache parallel(degree 80) as
+select  /*+ PARALLEL(64)*/ customer_type, COUNT(distinct customer_no)  tot_cust from sttm_customer a,
+sttm_cust_account b
+WHERE a.custOMER_NO = b.cusT_no
+AND (udf_2 is null  or LENgth(udf_2) !=11)
+ AND B.record_stat = 'O' and account_type !='Y' and account_class not in 
+('ECOAXA','ECOSWA','ECOWA2','ECOWAL','GHSXSA','GHSXSB','EASYSA','GHEASA','GHECMA',
+'GHMASS','GHSANF','GHSDPA','GHSEAS','GHSMIO','GHSMX1','GHSMXA','GHSSAA','GHSTAA')
+group by customer_type order by 1
+
+
+-- NO ID BY CUSTOMER
+create table NO_ID_BY_CUSTOMER2 nologging nocache parallel(degree 80) as
+SELECT /*+ PARALLEL(64)*/ customer_type,count(DISTINCT customer_no) TOT_CUST from STTM_customer A
+,STTM_CUST_ACCOUNT B where A.CUSTOMER_NO = B.CUST_NO
+and udf_2 is null and B.record_stat = 'O'and B.account_type !='Y'and B.account_class not in 
+('ECOAXA','ECOSWA','ECOWA2','ECOWAL','GHSXSA','GHSXSB','EASYSA','GHEASA','GHECMA',
+'GHMASS','GHSANF','GHSDPA','GHSEAS','GHSMIO','GHSMX1','GHSMXA','GHSSAA','GHSTAA')
+AND (LENGTH(unique_id_value) <=5 OR  LENGTH(unique_id_value) Is null)
+group by customer_type
+
+
+-- NO ID BY ACCT PRODUCT
+
+
+SELECT /*+ PARALLEL(64)*/ ACCOUNT_CLASS PRODUCT,count(DISTINCT cust_AC_no) TOT_CUST 
+from STTM_customer A,STTM_CUST_ACCOUNT B
+where CUST_NO = CUSTOMER_NO
+and udf_2 is null and B.record_stat = 'O'and B.account_type !='Y'and B.account_class not in 
+('ECOAXA','ECOSWA','ECOWA2','ECOWAL','GHSXSA','GHSXSB','EASYSA','GHEASA','GHECMA',
+'GHMASS','GHSANF','GHSDPA','GHSEAS','GHSMIO','GHSMX1','GHSMXA','GHSSAA','GHSTAA')
+AND (LENGTH(unique_id_value) <=5 OR  LENGTH(unique_id_value) Is null)
+group by ACCOUNT_CLASS
+
+SELECT * FROM PRODUCT_BY_ACCT ORDER BY 1
+

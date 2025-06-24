@@ -1,0 +1,100 @@
+create table Daily_CTR_1 nologging nocache parallel (degree 200) as
+select /*+ PARALLEL(64)*/
+trn_ref_no, trn_code, rownum "S/N", to_char(sysdate, 'dd/mm/yyyy') "REPORT DATE",
+trim('050' || to_char(sysdate, 'ddmmyyyy') || 'CTR' || 'NFIU1')
+"REFERENCE NUMBER", '050' "BANK CODE",substr(trn_ref_no,1,3) "BRANCH CODE",
+decode(customer_type, 'I', 'Individual','C', 'Corporate', 'Bank') "CUSTOMER TYPE",
+ac_gl_desc "SURNAME OR NAME OF ORG", get_branch_name(a.branch_code)BRN_NAME,
+' ' "FIRST NAME", ' ' "MIDDLE NAME", country NATIONALITY,
+udf_3 "DATE OF BIRTH", incorp_date "DATE OF INCORPORATION",
+nvl(designation, business_description) "OCCUPATION OR LINE OF BUSINESS",
+unique_ID_name "TYPE OF IDENTIFICATION", decode(customer_type, 'I',unique_id_value) "IDENTIFICATION NO.",
+decode(customer_type, 'C',c_national_id, 'B',c_national_id) "REGISTRATION NUMBER",
+decode(customer_type, 'I',ppt_iss_date) "DATE OF ISSUE",
+decode(customer_type, 'I', ' ', 'C', 'Abuja') "PLACE OF ISSUE",
+decode(unique_ID_name,'NATIONAL_DRIVER_LIC','Federal Road Safty Commission','REGISTRATION_NUMBER','Corporate Affairs Commission',
+'INTL_PASSPORT','Nigeria Immigration Service','NATIONAL_ID_CARD','Department Of National Civic Registration',
+'EMPLOYERS_ID_CARD','Others','NOTARY_PUBLIC','Court','INT_PASSPORT','Nigeria Immigration Service',
+'REG NUMBER','Corporate Affairs Commission','Others') "ISSUING AUTHORITY",
+decode(customer_type, 'I', 'Residential', 'Business') "CUSTOMER ADDRESS TYPE",
+address_line1 "FIRST LINE ADDRESS", address_line2 "SECOND LINE ADDRESS",
+address_line3 "TOWN/CITY", '-' "LOCAL GOVERNMENT", address_line3 STATE,
+nvl(telephone,UDF_5) TELEPHONE, e_mail "E-MAIL", (select decode(ac_class_type,'U','CURRENT','S','SAVINGS','N','NOSTRO')
+from fcubsnig.sttm_account_class where account_class=a.ac_class) "ACCT. TYPE",
+b.ac_no "ACCT. NO.", decode(ac_stat_dormant,'Y','Dormant','Active') "ACCOUNT STATUS",
+ac_open_date "DATE OF ACCOUNT OPENING",CUST_NO "LINK/CONNECTED ACCOUNTS",
+trn_dt "TRANSACTION DATE", drcr_ind "TRANSACTION TYPE",brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no) "TRANSACTION DESCRIPTION",decode(AC_CCY, 'NGN', lcy_amount, fcy_amount) AMOUNT,
+brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,b.ac_entry_sr_no) "PURPOSE OF TRANSACTION",
+brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,b.ac_entry_sr_no) "SOURCE/ORIGIN OF FUNDS",
+decode(drcr_ind, 'C', ac_gl_desc, brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no)) "NAME OF BENEFICIARY",decode(drcr_ind, 'C', address_line1||address_line2) "ADDRESS OF BENEFICIARY",
+decode(drcr_ind, 'D', ac_gl_desc, brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no)) "NAME OF SENDER",decode(drcr_ind, 'D', address_line1||address_line2) "ADDRESS OF SENDER",
+b.AC_CCY "CCY", c.UDF_2 AS BVN
+from fcubsnig.acvw_all_ac_entries_new b, fcubsnig.sttb_account a, fcubsnig.sttm_customer c, fcubsnig.sttm_branch d,
+fcubsnig.sttm_cust_professional e, fcubsnig.sttm_cust_personal f,fcubsnig.sttm_cust_corporate g
+where b.ac_no = a.ac_gl_no and a.cust_no =c.customer_no and b.ac_branch=d.branch_code
+and a.cust_no=e.customer_no(+) and a.cust_no=f.customer_no(+) and a.cust_no=g.customer_no(+)
+and b.auth_stat='A'
+AND (ac_branch not in ('G98','G98') or ac_class in('GHCDEP','GHCCCI','GHTFIT'))
+AND b.event <>'REVL' 
+AND trn_dt = to_date(to_char( sysdate - 1, 'YYYY-MM-DD'), 'YYYY-MM-DD')
+and (lcy_amount >= CASE
+WHEN b.AC_CCY not in('NGN','USD') THEN 3000000
+WHEN c.Customer_type='I' and ac_ccy='NGN' THEN 5000000
+ELSE 10000000 END or fcy_amount>= case when b.ac_ccy='USD' THEN 10000 end)
+and ac_class not in ('GHAPAF','GHAPPA','GHFAFG','GHARRE','GHNOFG','GHCAFI','GHSUFG','GHCBAN','GHFAFG','GHAPPA','GHARRE',
+'GHCINT','GHCOLL','WALKIN','TDCORP','GHAFFG','GHCBAN','GHCBSA','GHCFFI','GHCFFO','GHFAFG','GHNEXD','GHNILC','GHNLCB',
+'GHNOFG','GHNONC','GHRLCB','GHVOST','GHNOFN','GHCBAK','GHVOSN','GHNCBN','ATMOFF','CALYPS','GHABMT',
+'GHAPAF','GHAPPA','GHARRE','GHCAFI','GHCCAF','GHCCCU','GHCINT','GHCNQS','GHCPOL','GHCPPC','GHDFAA',
+'GHEURB','GHINTF','GHPCOL','GHPPE','GHSUND','RAPIDT','RAPISA','WALKIN','GHIACS','REGCOL','GHCNQD',
+'PDCORP','PDINDI','PDMICF','PDOTHR','PDPCOM','PDPDCI','TDCORD','TDCORI','TDCORP','TDEMBF','TDFINI',
+'TDINDD','TDINDF','TDINDI','TDMICF','TDMINT','TDOTHR','TDPCOM','TDDIS1','TDQINT','TDDEST','TDEMBI',
+'PDFINI')
+
+union
+
+select
+trn_ref_no, trn_code,rownum "S/N", to_char(sysdate, 'dd/mm/yyyy') "REPORT DATE",trim('050' || to_char(sysdate, 'ddmmyyyy') || 'CTR' || 'NFIU1')
+"REFERENCE NUMBER", '050' "BANK CODE",substr(trn_ref_no,1,3) "BRANCH CODE",decode(customer_type, 'I', 'Individual',
+'C', 'Corporate', 'Bank') "CUSTOMER TYPE",ac_gl_desc "SURNAME OR NAME OF ORG", get_branch_name(a.branch_code)BRN_NAME,
+' ' "FIRST NAME", ' ' "MIDDLE NAME", country NATIONALITY,udf_3 "DATE OF BIRTH", incorp_date "DATE OF INCORPORATION",
+nvl(designation, business_description) "OCCUPATION OR LINE OF BUSINESS",unique_ID_name "TYPE OF IDENTIFICATION",
+decode(customer_type, 'I',unique_id_value) "IDENTIFICATION NO.",decode(customer_type, 'C',c_national_id, 'B',c_national_id) "REGISTRATION NUMBER",
+decode(customer_type, 'I',ppt_iss_date) "DATE OF ISSUE", decode(customer_type, 'I', ' ', 'C', 'Abuja') "PLACE OF ISSUE",
+decode(unique_ID_name,'NATIONAL_DRIVER_LIC','Federal Road Safty Commission','REGISTRATION_NUMBER','Corporate Affairs Commission',
+'INTL_PASSPORT','Nigeria Immigration Service','NATIONAL_ID_CARD','Department Of National Civic Registration',
+'EMPLOYERS_ID_CARD','Others','NOTARY_PUBLIC','Court','INT_PASSPORT','Nigeria Immigration Service','REG NUMBER','Corporate Affairs Commission','Others') "ISSUING AUTHORITY",
+decode(customer_type, 'I', 'Residential', 'Business') "CUSTOMER ADDRESS TYPE",
+address_line1 "FIRST LINE ADDRESS", address_line2 "SECOND LINE ADDRESS",
+address_line3 "TOWN/CITY", '-' "LOCAL GOVERNMENT", address_line3 STATE,
+nvl(telephone,UDF_5) TELEPHONE, e_mail "E-MAIL", (select decode(ac_class_type,'U','CURRENT','S','SAVINGS','N','NOSTRO')
+from fcubsnig.sttm_account_class where account_class=a.ac_class) "ACCT. TYPE",
+b.ac_no "ACCT. NO.", decode(ac_stat_dormant,'Y','Dormant','Active') "ACCOUNT STATUS",
+ac_open_date "DATE OF ACCOUNT OPENING",get_cust_accts(CUST_NO) "LINK/CONNECTED ACCOUNTS",
+trn_dt "TRANSACTION DATE", drcr_ind "TRANSACTION TYPE",
+brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no) "TRANSACTION DESCRIPTION",
+decode(AC_CCY, 'NGN', lcy_amount, fcy_amount) AMOUNT,
+brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no) "PURPOSE OF TRANSACTION",
+brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no) "SOURCE/ORIGIN OF FUNDS",
+decode(drcr_ind, 'C', ac_gl_desc, brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no)) "NAME OF BENEFICIARY",
+decode(drcr_ind, 'C', address_line1||address_line2) "ADDRESS OF BENEFICIARY",
+decode(drcr_ind, 'D', ac_gl_desc, brg_addl_text_tj(b.trn_ref_no,b.event_sr_no,b.module,
+b.ac_entry_sr_no)) "NAME OF SENDER",
+decode(drcr_ind, 'D', address_line1||address_line2) "ADDRESS OF SENDER",
+b.AC_CCY "CCY", c.UDF_2 AS BVN
+from fcubsnig.acvw_all_ac_entries_new b, fcubsnig.sttb_account a, fcubsnig.sttm_customer c, fcubsnig.sttm_branch d,
+fcubsnig.sttm_cust_professional e, fcubsnig.sttm_cust_personal f,fcubsnig.sttm_cust_corporate g
+where ac_no = ac_gl_no and a.cust_no = c.customer_no(+) and b.ac_branch=d.branch_code and b.auth_stat='A'
+and a.cust_no=e.customer_no(+) and a.cust_no=f.customer_no(+) and a.cust_no=g.customer_no(+)
+and trn_dt = to_date(to_char( sysdate - 1, 'YYYY-MM-DD'), 'YYYY-MM-DD') 
+and lcy_amount >= 5000000
+and upper(brg_addl_text_tj(trn_ref_no,event_sr_no,module,ac_entry_sr_no)) like '%FINNOTE%'
+and ac_no ='155000103';
+
+--select * from Daily_CTR

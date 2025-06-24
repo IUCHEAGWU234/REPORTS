@@ -1,0 +1,35 @@
+---ESB
+select * from esbuser.mul_ibt_log where trunc(request_date) >=  trunc(sysdate) - 1
+
+----MOBILE
+select a.*,b.AGGREGATOR 
+from  esbuser.bil_tran_log a, esbuser.bil_billers b 
+where a.AFFILIATE_CODE ='ENG'  and a.AFFILIATE_CODE =b.AFFILIATE_CODE
+and  a.BILLER_CODE = b.BILLER_CODE  and AGGREGATOR = 'INTERSWITCH_V2'
+and trunc(REQUEST_DATE) =  trunc(sysdate) - 1
+
+----CORAL-BET
+select a.*,b.AGGREGATOR 
+from  esbuser.bil_tran_log a, esbuser.bil_billers b 
+where a.AFFILIATE_CODE ='ENG'  and a.AFFILIATE_CODE =b.AFFILIATE_CODE
+and  a.BILLER_CODE = b.BILLER_CODE  
+and b.BILLER_CODE = 'CORAL_BET9JA'
+and trunc(REQUEST_DATE) =  trunc(sysdate) - 1
+
+
+------PHED
+select a.*,b.AGGREGATOR 
+from  esbuser.bil_tran_log a, esbuser.bil_billers b 
+where a.AFFILIATE_CODE ='ENG'  and a.AFFILIATE_CODE =b.AFFILIATE_CODE
+and  a.biller_code = 'PHED'
+and trunc(REQUEST_DATE) =  trunc(sysdate) - 1
+
+
+------AIRTIME TOPUP
+select * from esbuser.BIL_TRAN_LOG where affiliate_code = 'ENG' 
+and (payment_detail like '%AIRTIME%' or payment_detail like '%DATA%')
+and trunc(request_date) =  trunc(sysdate) - 1
+
+
+----ESB FOR AGENCY BANKING
+select * from  mesb_sadc.bil_agent_log where AFFILIATE_CODE ='ENG' and trunc(request_date) = trunc(sysdate) - 1

@@ -1,0 +1,71 @@
+--- ON ORACLE 
+
+create table SDUTY_WEEKLY_NGN nologging nocache parallel (degree 100) as
+SELECT /*+ PARALLEL(64)*/ trn_dt,substr(trn_ref_no,1,3) br,related_account ano,related_customer cno,lcy_amount amt,drcr_ind,
+boengprod.BRG_ADDL_TEXT_tj(a.trn_ref_no,a.event_sr_no,a.module,a.ac_entry_sr_no)NARRATION
+from fcubsnig.acvw_all_ac_entries a 
+where AC_NO ='9983059794' 
+and trn_dt  between '20-JAN-2025' and '26-JAN-2025' 
+and a.AUTH_STAT = 'A';
+
+select * from SDUTY_WEEKLY_NGN;
+
+GRANT SELECT ON SDUTY_WEEKLY_NGN TO MISUSER;
+
+
+select * from fcubsnig.sttm_account_balance where cust_ac_no = '9983059794';
+
+
+
+--- On SQL Server .64 (ACTB_HISTORY)
+
+truncate table ACTB_HISTORY.dbo.SDUTY_WEEKLY_UPL 
+
+--- import data from SDUTY_WEEKLY on Oracle into .64 (ACTB_HISTORY.dbo.SDUTY_WEEKLY_UPL)
+
+use actb_history
+ go
+ insert into dbo.SDUTY_WEEKLY_UPL  (trn_dt,BR,ano,cno,amt,drcr_ind)
+  select * from openquery(Flexrep141_acdc_f12, '
+   select trn_dt,br,ano,cno,amt,drcr_ind from boengprod.SDUTY_WEEKLY
+ 
+ ')
+go
+
+---- DATA CLEANING 
+UPDATE t1 SET ctype = t2.ctype,aclass=t2.aclass fROM SDUTY_WEEKLY_UPL  t1 INNER JOIN acct_master_SEP2022 t2
+     ON t2.aNO = t1.aNO
+delete SDUTY_WEEKLY_UPL  where ano='9983059794'	and drcr_ind='D' 
+delete SDUTY_WEEKLY_UPL  where cno='008459805'	and drcr_ind='D' 	 
+
+update SDUTY_WEEKLY_UPL  set ano='NA',cno='NA',CTYPE='I',ACLASS='NA' where ano is null and cno is null
+update SDUTY_WEEKLY_UPL  set ano='NA',cno='NA',CTYPE='I',ACLASS='NA' where ano is null and cno='008459805'
+update SDUTY_WEEKLY_UPL  set ano='NA',cno='NA',CTYPE='I',ACLASS='NA' where ctype is null
+
+ UPDATE t1 SET ANO=T2.ANO,ctype = t2.ctype,aclass=t2.aclass fROM SDUTY_WEEKLY_UPL  t1 INNER JOIN acct_master_SEP2022 t2 ON t2.CNO = t1.CNO Where T1.Ano is null
+  UPDATE t1 SET ctype = t2.ctype,aclass=t2.aclass fROM SDUTY_WEEKLY_UPL  t1 INNER JOIN acct_master_SEP2022 t2 ON t2.CNO = t1.CNO where T1.CTYPE is null
+
+update SDUTY_WEEKLY_UPL  set acct_type='E' where aclass in 
+('GHSSSA','GHSESA','GHSEFG','GHSSFG','GHCAEN','GHSENT','ECOMOA','GHEAPC','GHCAIN','GHEEAP','GHCSEG','GHEAPC') 
+	
+ UPDATE t1 SET state = t2.state fROM SDUTY_WEEKLY_UPL  t1 INNER JOIN br_state_mapping t2
+     ON t2.br = t1.br
+	 
+update SDUTY_WEEKLY_UPL  set acct_type='I' where ctype='I' and acct_type is null
+update SDUTY_WEEKLY_UPL  set acct_type='C' where ctype !='I' and acct_type is null	 
+--- STOP ---
+
+----  MANUAL RENDITION
+
+select state,sum(case when acct_type='C' then 1 else 0 end) as  CORPORATE,
+sum(case when acct_type='I' then 1 else 0 end) as INDIVIDUAL, sum(case when acct_type='E' then 1 else 0 end) as 'PARTNERSHIP/BUSINESS NAME',
+COUNT(ano) as 'TRANSACTION COUNT',SUM(case when drcr_ind='D' THEN -AMT ELSE AMT END) as 'CUMULATIVE AMOUNT CHARGED'--,'TQS API' AS 'SETTLEMENT CHANNEL',
+--'CBN' AS 'BENEFICIARY BANK',
+--'20259061211' 'BENEFICIARY ACCOUNT'
+from SDUTY_WEEKLY_UPL  
+group by state ORDER BY 1
+
+--- to check balance
+
+select * from fcubsnig.sttm_account_balance where cust_ac_no = '9983059794'
+

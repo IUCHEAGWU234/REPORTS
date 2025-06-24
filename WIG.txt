@@ -1,0 +1,22 @@
+-- TOTAL CUSTOMER
+select /*+PARALLEL(64)*/ count(1) TOTAL_CUSTOMER
+from sttm_cust_account 
+where record_stat = 'O'
+and account_type != 'Y' ;
+
+
+--NEW ONBOARD
+select /*+PARALLEL(64)*/ count(1) NEW_ONBOARD
+from sttm_cust_account 
+where record_stat = 'O'
+and account_type != 'Y' 
+and ac_open_date between '17-FEB-2025' and '21-FEB-2025';
+
+
+--- ACTIVE CUSTOMER
+select /*+PARALLEL(64)*/ count(1) ACTIVE_CUSTOMER
+from sttm_cust_account 
+where ((DATE_LAST_CR_ACTIVITY BETWEEN '17-FEB-2025' and '21-FEB-2025') 
+OR (DATE_LAST_DR_ACTIVITY BETWEEN '17-FEB-2025' and '21-FEB-2025'))  
+AND RECORD_STAT = 'O'
+AND ACCOUNT_TYPE != 'Y'

@@ -1,0 +1,16 @@
+create table TJ_B77  nologging nocache parallel (degree 200) as
+ 
+SELECT AC_BRANCH,A.MODULE,A.TRN_REF_NO, SUBSTR(A.TRN_REF_NO, 1,3) as ORIG_BRN,
+get_branch_name(SUBSTR(A.TRN_REF_NO, 1,3)) BRANCH_NAME,
+SUBSTR(A.TRN_REF_NO, 4,4) as PRDT_CODE, get_product_name(SUBSTR(A.TRN_REF_NO, 4,4)) PRODUCT_DESCRIPTION,
+A.TRN_CODE, get_trn_descr( A.TRN_CODE) TRN_DESC, SUBSTR(A.TRN_REF_NO, 8,2) as TXN_YR,SUBSTR(A.TRN_REF_NO, 13,4) as SEQ_NO,
+AC_NO, bonig.get_acc_available_bal(AC_NO) as acy_available_bal,bonig.get_acct_or_gl_desc(a.ac_no) AC_GL_DESC, A.BATCH_NO,
+nvl(GET_ALT_AC_NO_NEW(ac_no),null) ALT_AC_NO,case when substr(a.trn_ref_no,4,4)='INTR'
+then (select description from fcubsnig.RTTB_INTRA_BANK_MASTER where reference_no = a.trn_ref_no)
+when substr(trn_ref_no,4,4) IN ('CHFV','CHTV','TDRC') then bonig.get_trn_descr(a.trn_code)
+else brg_addl_text_tj(A.TRN_REF_NO,A.EVENT_SR_NO,A.MODULE,A.AC_ENTRY_SR_NO) end as narration,
+A.AC_CCY, A.DRCR_IND, A.FCY_AMOUNT, A.EXCH_RATE, A.LCY_AMOUNT, A.TRN_DT, A.VALUE_DT, A.TXN_INIT_DATE,
+A.USER_ID, A.AUTH_ID, A.EXTERNAL_REF_NO,trunc(sysdate) rdate
+from fcubsnig.acvw_all_ac_entries A
+WHERE A.TRN_DT = '10-Dec-2020'
+and ac_no <>'238400023' AND A.module NOT IN ('RE','IF','IC') and event !='CYPO' and ac_branch ='B77'

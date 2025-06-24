@@ -1,0 +1,28 @@
+----OVERDRAFT BY CCY
+ 
+select 'TOTAL_BAL' ccy,count(ano) as COUNT,SUM(BAL) as  balance
+from [AUTO_ENG_FINANCE].[dbo].[LOAN_DEP_today_6JAN2023] 
+where len(ano) = '10' 
+and rep_type not in ('1_CURRENT', '2_SAVINGS', '3_TIME')
+
+union
+
+select ccy as CCY,count(ano) as COUNT,SUM(BAL) as balance
+from [AUTO_ENG_FINANCE].[dbo].[LOAN_DEP_today_6JAN2023] 
+where len(ano) = '10' 
+and rep_type not in ('1_CURRENT', '2_SAVINGS', '3_TIME')
+group by ccy 
+order by 3 OFFSET 0 ROWS
+
+
+-------------------------------------------------------------
+
+SELECT currency AS CCY, 
+COUNT(ACCOUNT_NUMBER) AS COUNT
+---SUM(TOTAL_DAILY_BAL) AS BALANCE
+FROM [ODSAGGR].[DAILY_GLBAL_accountdetails]
+WHERE LEN(ACCOUNT_NUMBER) = '10'
+AND PRODUCT NOT IN ('S', 'U', 'Y')
+AND REF_DATE = '2025-01-17'
+GROUP BY currency
+order by 3 OFFSET 0 ROWS

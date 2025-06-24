@@ -1,0 +1,14 @@
+----LCY
+select top 1000 row_number() over(order by lcy_balance desc) Ranking,a.* , bus_seg, BUS_UNIT
+from 
+AUTO_ENG_FINANCE.dbo.deposit_customer a JOIN LOAN_DEP_TODAY b 
+on a.ano = b.ano 
+where currency ='NGN' 
+order by lcy_balance desC
+ 
+----FCY
+select top 1000 row_number() over(order by lcy_balance desc) Ranking,a.* , b.bus_seg, b.BUS_UNIT
+from 
+AUTO_ENG_FINANCE.dbo.deposit_customer a JOIN LOAN_DEP_TODAY b 
+on a.ano = b.ano 
+where currency !='NGN'

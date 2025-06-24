@@ -1,0 +1,27 @@
+---OD_SEG
+select BUS_UNIT_DESCR as segment,ccy as CCY,count(cust_ac_no) as COUNT,SUM(DR_BAL_LCY) AS balance
+from [AUTO_ENG_FINANCE].[dbo].[od_details_daily2_31AUG2023] group by BUS_UNIT_DESCR,ccy order by 1 OFFSET 0 ROWS;
+
+
+-----TD
+select BUS_UNIT as SEGMENT,ccy as CCY,count(cust_ac_no) as COUNT,SUM(CR_BAL_LCY) AS BALANCE
+from [AUTO_ENG_FINANCE].[dbo].[DEP_T_DETAILS_DAILY2_31AUG2023] group by BUS_UNIT,ccy order by 1 OFFSET 0 ROWS;
+
+
+
+
+-----CA
+select BUS_UNIT_DESCR as SEGMENT,ccy as CCY,count(cust_ac_no) as COUNT,SUM(CR_BAL_LCY) AS BALANCE
+from [AUTO_ENG_FINANCE].[dbo].[CA_DETAILS_DAILY2_31AUG2023] group by BUS_UNIT_DESCR,ccy order by 1 OFFSET 0 ROWS;
+
+
+
+------------LOANS
+select BUS_UNIT as SEGMENT,ccy as CCY,count(cust_ac_no) as COUNT,SUM(DR_BAL_LCY) AS BALANCE
+from [AUTO_ENG_FINANCE].[dbo].[LOAN_DETAILS_DAILY2_31AUG2023] group by BUS_UNIT,ccy order by 1 OFFSET 0 ROWS;
+
+
+-------------SAV
+  select BUS_UNIT_DESCR as SEGMENT,ccy as CCY,count(cust_ac_no) as COUNT,SUM(CR_BAL_LCY) AS BALANCE
+from [AUTO_ENG_FINANCE].[dbo].[SAV_DETAILS_DAILY2_31AUG2023] group by BUS_UNIT_DESCR,ccy order by 1 OFFSET 0 ROWS
+

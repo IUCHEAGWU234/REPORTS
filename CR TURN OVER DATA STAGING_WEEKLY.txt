@@ -1,0 +1,168 @@
+create table temp_port_acct(ano varchar2(20))
+---------------------------------------------------------------------------------------------------
+--- upload the cust_no in the file UPDATED LIST FOR MONTHLY CREDIT TURNOVER REPORT  into the table temp_port_acct
+create table temp_port_acct_bkp as select * from temp_port_acct;
+create table temp_port_acct_cno as select distinct ano from temp_port_acct;
+create index temp_port_acct_cno on temp_port_acct_cno(ano);
+truncate table temp_port_acct;
+create table temp_port_acct_all as
+select cust_ac_no ano,cust_no cno,a.ccy,branch_code br from fcubsnig.sttm_cust_account a,temp_port_acct_cno b where ano=cust_no
+and record_stat='O';
+insert into temp_port_acct select ano from temp_port_acct_all;
+commit;
+create index temp_port_acct_all on temp_port_acct_all(ano);
+
+---------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION GET_CREDIT_TOVER_RISK_FCY(ac_num VARCHAR2,
+start_date date,end_date date)
+RETURN number IS
+   cr_lcy number;
+BEGIN
+select SUM(fcy_amount) into cr_lcy from acvw_all_ac_entries_new
+where ac_no=ac_num
+and drcr_ind='C' and value_dt between start_date and end_date
+and cust_gl='A' and event not in ('REVL','CYPO','REVR')
+and auth_stat='A'
+and module not in ('LD','LC')
+and trn_code not in ('F63','F64','M00','M02','M03','M05','M10','M11','M12','M13','M50','M51','M52','M53','M55','M61','Q10','Q09','135','155','159','229')
+group by ac_no;
+RETURN
+   cr_lcy;
+END; 
+---------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION GET_CREDIT_TOVER_RISK_LCY(ac_num VARCHAR2,
+start_date date,end_date date)
+RETURN number IS
+   cr_lcy number;
+BEGIN
+select sum(lcy_amount) into cr_lcy from acvw_all_ac_entries_new
+where ac_no=ac_num
+and drcr_ind='C' and value_dt between start_date and end_date
+and cust_gl='A' and event not in ('REVL','CYPO','REVR')
+and auth_stat='A'
+and module not in ('LD','CL')
+and trn_code not in ('F63','F64','M00','M02','M03','M05','M10','M11','M12','M13','M50','M51','M52','M53','M55','M61','Q10','Q09','135','155','159','229')
+group by ac_no;
+RETURN
+   cr_lcy;
+END; 
+---------------------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION GET_ALT_TRN_cno (ref_no varchar2,ano varchar2)
+RETURN varchar2
+AS
+acct varchar2(20);
+BEGIN
+select related_customer
+into acct
+from acvw_all_Ac_entries
+where trn_ref_no=ref_no
+and cust_gl='A'
+and ac_no <> '238400023'
+and ac_no <> ano
+and rownum < 2;
+RETURN acct;
+END;
+---------------------------------------------------------------------------------------------------
+-- 3A  ------- WEEKLY 
+  create table cov_to_pre_wk nologging nocache parallel (degree 200) as
+  select get_branch_name(br) BRANCH_NAME,a.ano CUSTOMER_ACCT_NO,a.cno CUSTOMER_ID,bonig.get_acct_or_gl_desc(a.ano)  ACCOUNT_NAME,
+  a.ccy EXPOSURE_CURRENCY,case when a.ccy ='NGN' then
+   nvl(GET_CREDIT_TOVER_RISK_lcy(a.ano,TRUNC(sysdate, 'IW') ,NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY')),0.00)
+   else
+    nvl(GET_CREDIT_TOVER_RISK_fcy(a.ano,TRUNC(sysdate, 'IW'),NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY')),0.00) end ACY_TO,
+    nvl(GET_CREDIT_TOVER_RISK_lcy(a.ano,TRUNC(sysdate, 'IW'),NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY')),0.00) LCY_TO,
+  0.00 CR_TOVER_ACY_NET,0.00 CR_TOVER_LCY_NET,TRUNC(sysdate, 'IW') sdate,
+  NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY') edate,acy_opening_bal EXPOSURE_AMOUNT_ACY,lcy_opening_bal EXPOSURE_AMOUNT_lCY,
+  case when substr(bonig.get_account_segment_code(cust_ac_no,br),1,2)='CB' then 'CORPORATE'
+    when substr(bonig.get_account_segment_code(cust_ac_no,br),1,2)='CM' then 'COMM'
+      when substr(bonig.get_account_segment_code(cust_ac_no,br),1,2)='CONS' then 'CONSUMER' else 'UNCODED' end
+     SEGMENT,a.br BRANCH_CODE
+  from boengprod.temp_port_acct_all a,fcubsnig.sttm_cust_account b
+    where a.ano=b.cust_ac_no;
+  
+--3B  F63 Weekly
+
+create table f3_trans_cr_wk nologging nocache parallel (degree 200) as
+select trn_ref_no trn_ref,ac_no,a.ac_ccy ccy,b.cno,lcy_amount amt,fcy_amount famt from acvw_all_ac_entries a,boengprod.temp_port_acct_all b
+where ac_no=ano and auth_stat='A' and trn_dt between TRUNC(sysdate, 'IW')
+and NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY') 
+and drcr_ind = 'C' and trn_code='F63' ;
+
+create index f3_trans_cr_wk on f3_trans_cr_wk(trn_ref);
+create index f3_trans_cr_wk2 on f3_trans_cr_wk(ac_no);
+create index f3_trans_cr_wk3 on f3_trans_cr_wk(cno);
+create index f3_trans_cr_wk5 on f3_trans_cr_wk(ccy);
+
+create table f3_trans_dr_wk nologging nocache parallel (degree 200) as
+select trn_ref_no trn_ref,a.ac_no,a.ac_ccy ccy,get_cust_no(a.ac_no) cno,lcy_amount amt,fcy_amount famt 
+from acvw_all_ac_entries a,f3_trans_cr_wk b
+where a.trn_ref_no =b.trn_ref and auth_stat='A' and trn_dt between TRUNC(sysdate, 'IW')
+and NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY') 
+and drcr_ind = 'D' and trn_code='F63' and cust_gl='A';
+
+create index f3_trans_dr_wk on f3_trans_dr_wk(trn_ref);
+create index f3_trans_dr_wk2 on f3_trans_dr_wk(ac_no);
+create index f3_trans_dr_wk3 on f3_trans_dr_wk(cno);
+create index f3_trans_dr_wk5 on f3_trans_dr_wk(ccy);
+
+create table f3_trans_wk nologging nocache parallel (degree 200) as
+select  ac_no,sum(case when ccy = 'NGN' then amt else a.famt end) fcy_amt,sum(amt) lcy_amt
+ from f3_trans_cr_wk a
+where trn_ref in (
+select trn_ref from f3_trans_cr_wk where trn_ref||cno in (
+select trn_ref||cno from f3_trans_cr_wk
+minus
+select trn_ref||cno from f3_trans_dr_wk))
+group by ac_no;
+
+
+create table f3_trans_final_wk nologging nocache parallel (degree 200) as
+select * from f3_trans_wk
+union all
+select ano,0.00,0.00 from boengprod.temp_port_acct where ano in  
+(select ano from boengprod.temp_port_acct
+minus
+select ac_no from f3_trans_wk);
+
+---3C --------   cbn Intervention -- WEEKLY
+create table cbn_interv_wk as select substr(trn_ref_no,1,12) trn_ref from actb_history a
+where ac_no='238400180' and trn_dt between TRUNC(sysdate, 'IW')
+and NEXT_DAY(TRUNC(sysdate,'IW'),'FRIDAY') 
+and drcr_ind = 'D';
+
+create index cbn_interv_wk on cbn_interv_wk(trn_ref);
+
+create table cov_to_CBN_prv_wk nologging nocache parallel (degree 200) as
+select  ac_no,sum(case when ac_ccy = 'NGN' then lcy_amount else a.fcy_amount end) fcy_amt,sum(lcy_amount) lcy_amt
+ from acvw_all_ac_entries a,boengprod.temp_port_acct_all b
+where ano=ac_no and auth_stat='A' --and ac_no in (select ano from boengprod.temp_port_acct)
+and drcr_ind='C'
+and substr(trn_ref_no,1,12) in (
+select trn_ref from cbn_interv_wk a)
+group by ac_no;
+
+
+create table cov_to_CBN_prv_wk_final nologging nocache parallel (degree 200) as
+select * from cov_to_CBN_prv_wk
+union all
+select ano,0.00 fcy_amt,0.00 lcy_amt from boengprod.temp_port_acct where ano in  
+(select ano from boengprod.temp_port_acct
+minus
+select ac_no from cov_to_CBN_prv_wk);
+
+---------------------------------------------------------------------------------------------------
+-- The BO Report -- Dont do anything
+-- WEEKLY
+select branch_name,customer_acct_no,customer_id,account_name,exposure_currency,acy_to,lcy_to,
+((a.acy_to + b.fcy_amt) - c.fcy_amt) as cr_tover_acy_net,
+((a.lcy_to + b.lcy_amt) - c.lcy_amt) as cr_tover_lcy_net,sdate,edate,
+exposure_amount_acy,exposure_amount_lcy,segment,branch_code 
+from cov_to_pre_wk a,f3_trans_final_wk b,cov_to_CBN_prv_wk_final c
+where a.customer_acct_no = b.ac_no and a.customer_acct_no = c.ac_no;
+
+
+
+
+
+

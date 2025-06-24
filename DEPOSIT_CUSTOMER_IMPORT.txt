@@ -1,0 +1,32 @@
+/****** Script for SelectTopNRows command from SSMS  ******/
+truncate table deposit_customer
+
+
+insert into deposit_customer([eod_date],[maturity_date]
+,[ano],[cno],[customer_name],[PRODUCT],[Currency]
+,[LCY_Balance],[Rate])
+select top 1000 'Nov 03,2023' eod_date,null maturity_date,cust_ac_no ano,cust_no cno,ac_desc customer_name,'CURRENT_ACCOUNT' PRODUCT,
+a.CCY Currency,a.bal LCY_Balance,0.00 Rate from loan_dep_today_03nov2023 a join ca_details_daily2 b
+on a.ano = b.cust_ac_no where rep_type = '1_CURRENT' and cr_bal_lcy > 0
+order by cr_bal_lcy desc
+insert into deposit_customer([eod_date],[maturity_date]
+,[ano],[cno],[customer_name],[PRODUCT],[Currency]
+,[LCY_Balance],[Rate])
+select top 1000 'Nov 03,2023' eod_date,null maturity_date,cust_ac_no ano,cust_no cno,ac_desc customer_name,'SAVING_ACCOUNT' PRODUCT,
+a.CCY, a.bal LCY_Balance,0.00 Rate from loan_dep_today_03nov2023 a join sav_details_daily2 b
+on  a.ano = b.cust_ac_no where rep_type = '2_SAVINGS' and cr_bal_lcy > 0
+order by cr_bal_lcy desc
+insert into deposit_customer([eod_date],[maturity_date]
+,[ano],[cno],[customer_name],[PRODUCT],[Currency]
+,[LCY_Balance],[Rate])
+select top 1000 'Nov 03,2023' eod_date,maturity_date,cust_ac_no ano,cust_no cno,ac_desc customer_name,'FIX DEPOSIT' PRODUCT,
+a.CCY Currency,a.bal LCY_Balance,Interest_Rate from loan_dep_today_03nov2023 a join t_deposit_daily_report b
+on a.ano = b.cust_ac_no where rep_type = '3_TIME' 
+order by cr_bal_lcy
+insert into deposit_customer([eod_date],[maturity_date]
+,[ano],[cno],[customer_name],[PRODUCT],[Currency]
+,[LCY_Balance],[Rate])
+select top 1000 'Nov 03,2023' eod_date,maturity_date,cust_ac_no ano,cust_no cno,ac_desc customer_name,'FIX DEPOSIT DFIN' PRODUCT,
+a.CCY Currency,contract_lcy_amount LCY_Balance,Rate from loan_dep_today_03nov2023 a join dep_dfin_details_daily2 b
+on a.ano = b.cust_ac_no where rep_type = '3_TIME'  and len(ano) > 10
+order by contract_lcy_amount

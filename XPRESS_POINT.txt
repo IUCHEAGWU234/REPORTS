@@ -1,0 +1,5 @@
+select * from mesb_sadc.ag_agent_info_onboard
+where account_type in ('FLEXI','PREMIUM','TIER_1','XPRESS_ACCOUNT','XPRESS_SAVE_ACCOUNT','TIER_3S','TIER_3P')
+AND TRUNC(CREATED_DATE) >= '01-NOV-2024'
+AND ACCOUNT_NO IS NOT NULL
+order by created_date desc

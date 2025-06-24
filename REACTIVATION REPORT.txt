@@ -1,0 +1,21 @@
+Create table RCTVN nologging nocache parallel (degree 200) as
+select a.branch_code, get_branch_name(a.branch_code)BR_NAME, a.CUST_NO, 
+a.cust_Ac_no, a.ac_desc, a.ac_stat_dormant, a.ac_open_Date, 
+a.dormancy_date, e.dormancy_end_dt reactivation_date, a.ACCOUNT_CLASS, 
+a.date_last_dr_activity, a.date_last_Cr_activity, 
+get_account_off_code(a.cust_ac_no,a.branch_code) rmcode,
+get_account_offcr_desc(get_account_off_code(a.cust_ac_no,a.branch_code)) rmname, 
+get_credit_tover(a.cust_ac_no, '06-MAY-2024', '10-MAY-2024')INFLOW,
+get_account_segment_code(a.cust_Ac_No, a.branch_code)SEG_CODE,
+get_account_segment_DESC(a.cust_Ac_No, a.branch_code)SEG_DESC
+from sttm_cust_account a, STTM_CUST_ACCOUNT_DORMANCY e 
+where e.cust_ac_no = a.cust_ac_no 
+and e.dormancy_end_dt between '06-MAY-2024' and '10-MAY-2024';
+
+SELECT * FROM RCTVN;
+
+select BRANCH_CODE, BR_NAME, SEG_CODE, SEG_DESC, COUNT(CUST_NO)COUNTS_CUSTOMERS
+from RCTVN
+GROUP BY BRANCH_CODE, BR_NAME, SEG_CODE, SEG_DESC
+
+

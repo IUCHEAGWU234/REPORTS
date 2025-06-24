@@ -1,0 +1,109 @@
+SELECT /*+PARALLEL(64)*/ branch_addr3,sum(lcy_amount)lcy_amount
+FROM ACVW_ALL_AC_ENTRIES A,STTM_BRANCH B
+WHERE SUBSTR(A.TRN_REF_NO,1,3) = BRANCH_CODE AND AC_NO = '9983009665' and trn_dt between '07-jUn-2024' and '6-JUL-2024'
+and drcr_ind = 'C'
+group by branch_addr3
+
+
+RESAVE THE FILE TO EXCEL-97/2003
+
+
+EXTRACT TO EXCEL
+
+Create a new column (TRN_AMOUNT) , FORMULAR LCY_AMOUNT/0.075
+
+- Send the excel file Containing the TRN_AMOUNT Column to Ogundare Olufunke
+
+--- download excel attached sent by Finance
+--- Save it as an excel 2007 file
+-- login to below server 
+---10.8.174.60
+--user_id: APPSERVICE
+---PW: 2Hard4U123$
+--- CALL UP SSMS
+--Login to the DB BELOW
+--IP: 10.8.188.89,1433 FIRS_ETAP
+--USERID; AEKPENYONG
+--PW: Ecobank123$
+
+
+---- BACK UP old data
+insert into tax_data_bkp
+select * from tax_data
+
+truncate table tax_data
+
+
+-- USE import export to IMPORT the data from finance into FIRS_ETAP DB, TAX_DATA table
+
+MAP TRAN AMOUNT TO TRN_AMT
+
+-- Run the below query
+Select * from tax_data
+
+-- Always change the date in the above to the month you are reporting for in 'YYYYMM' Format
+update  a set ac_entry_sr_no = CONCAT(b.CODE,'202405') from  tax_data a left join 
+vat_mapping B on A.AC_BRANCH = B.AC_BRANCH 
+
+
+UPDATE tax_data set NARRATIONS = 'VAT REMITTANCE'
+update tax_data set tin = '00422371-0001'
+
+
+
+
+--- Run the below query to confirm that the sum of the lcy_ampunt uploaded is same as in the excel.
+select sum(lcy_amount) from tax_data
+
+
+--- Run the below and scan through the entries for any anomaly
+SELECT TIN as taxIdentificationNumber,cast(ac_entry_sr_no as varchar)  as invoice,
+cast(LCY_AMOUNT as decimal(20,2)) as taxAmount,
+cast((TRN_AMOUNT) as decimal(20,2)) as transactionAmount ,narrations as description,
+case when gl_name like 'WITH%' then 'WHT' else 'VAT' end as taxId 
+FROM TAX_DATA 
+
+--- Go to Netbean and open the etapprocessor class
+--path D:\NETBEANS_PROJECT\FIRS_ETAP\src\ETAP_service\ETAP_Processor.java
+
+
+---- Ensure you change the Month variable (On line 84)	 to the value of the month you are currently reporting  for example:
+---line no 84 
+--private String Month = "12";(This indicate the month bbeing reported is for DECEMBER)
+
+----
+
+--Run the ETAP_Service and wait few minutes(20mins) 
+-- Once all the data has been uploaded.
+
+--Run the below query to confirm the records transmitted
+
+select sum(transactionamount)transactionamount, sum(taxamount) from tax_success_status 
+where cast(updatedate as date) = '2024-06-20' 
+
+--(Change the updatedate above to the date you ran the ETAP Service to confirm the records sent to Etranzact)
+
+
+-- If the taxamount do not tally with the total taxamount received from Finance,
+--Check the below table and refer to Finance team to provide a correct TIN
+--and retransmit the pending data.
+select * from tax_failed_status
+--Once completely transmitted and the amount jives sent a mail to the finance team see sample  below
+
+Dear Funke,
+
+The record has been transmitted to Etranzact.
+TRANSACTION_aMOUNT	
+1990779096.52	
+
+TAX_AMOUNT
+149308432.25
+
+Regards,
+
+
+
+
+
+
+file://eng-misbip-02/D/HANDOVER/FIRS_ETAP

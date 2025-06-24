@@ -1,0 +1,67 @@
+
+--- download excel attached sent from Finance
+----Clear sum(LCY AMOUNT) on the last row
+--- Save it as an excel 2007 file
+-- login to below server 
+---10.8.174.60
+--user_id: APPSERVICE
+---PW: 2Hard4U123$
+--- CALL UP SSMS
+--Login to the DB BELOW
+--IP: 10.8.188.89,1433
+--USERID; AEKPENYONG
+--PW: Ecobank123$
+
+
+---- BACK UP old data
+---DB = FIRS_ETAP
+
+insert into tax_data_bkp
+select * from tax_data
+
+truncate table tax_data
+select * from tax_data
+-- USE import export to upload the Finance XCEL FILE into FIRS_ETAP DB - TAX_DATA table
+-- EDIT MAPPING and remap the updated TIN to TIN column
+
+-- Run the below query
+update tax_data set TRN_amount  = lcy_amount * 10
+
+--- Run the below and scan through the entries for any anomaly
+SELECT TIN as taxIdentificationNumber,cast(ac_entry_sr_no as varchar)  as invoice,
+cast(LCY_AMOUNT as decimal(20,2)) as taxAmount,
+cast((TRN_AMOUNT) as decimal(20,2)) as transactionAmount ,narrations as description,
+case when gl_name like 'WITH%' then 'WHT' else 'VAT' end as taxId 
+FROM TAX_DATA  
+
+--- Go to Netbean and open the etapprocessor class
+--path D:\NETBEANS_PROJECT\FIRS_ETAP\src\ETAP_service\ETAP_Processor.java
+
+
+---- Ensure you change the Month variable (On line 84)	 to the value of the month you are currently reporting  for example:
+---line no 82 
+--private String Month = "05";(This indicate the month bbeing reported is for May)
+
+----
+
+--Run the ETAP_Service and wait few minutes(20mins) 
+-- Once all the data has been uploaded.
+
+--Run the below query to confirm the records transmitted
+select sum(transactionamount)transactionamount, sum(taxamount) from tax_success_status 
+where cast(updatedate as date) = '2024-06-20' 
+--(Change the updatedate above to the date you ran the ETAP Service to confirm the records sent to Etranzact)
+
+
+-- If the taxamount do not tally with the total taxamount received from Finance,
+--Check the below table and refer to Finance team to provide a correct TIN
+--and retransmit the pending data.
+select * from tax_failed_status
+--Once completely transmitted and the amount jives sent a mail to the finance team see sample  below
+
+--Dear Funke,
+
+--The record has been transmitted to Etranzact.
+--Tax Amount: 168,818,666.58
+--Transaction Amount: 1,688,186,665.8
+--Warm Regards,

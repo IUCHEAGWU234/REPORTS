@@ -1,0 +1,109 @@
+Create table mtr_001 nologging nocache parallel (degree 200) as
+
+SELECT  to_char('00050') as BANK_BDC_CODE,bonig.get_cust_no(a.ac_no) as CUSTOMER_ID,
+
+decode(a.ac_ccy,'USD','US','GBP','GB','EUR','DE','XOF','BJ','NGN','NG','NONE') as COUNTRY_CODE,
+
+a.ac_ccy CURRENCY_CODE,a.ac_no BENIFICIARIES_ACCT_NO,bonig.get_cust_ac_name(a.ac_no) as BENIFICIARIES_NAME,
+
+NVL(a.fcy_amount,a.lcy_amount) as AMOUNT_IN_ORIGINAL_CURR,
+
+NVL(bonig.get_mid_rate(ac_ccy ,misuser.curr_sys_date),'1') as EXCHANGE_RATE,
+
+(case when  a.ac_ccy not in ('NGN','XOF') then
+
+NVL(bonig.get_mid_rate(ac_ccy ,misuser.curr_sys_date),'1')* a.fcy_amount else
+
+round(a.lcy_amount/NVL(bonig.get_mid_rate(ac_ccy ,misuser.curr_sys_date),'1'),2) end )
+
+as USD_EQUIVALENT,
+
+to_char('SHORT TERM ') DURATION,
+
+a.value_dt VALUE_DATE,
+
+to_char('INFLOW') REMARKS,
+
+x.address_line1||' '||x.address_line2||' '||x.address_line3 "CUSTOMER ADDRESS",
+
+GET_BRANCH_NAME(a.ac_branch) as "BRANCH NAME",a.ac_branch "BRANCH CODE",
+
+x.unique_id_value "RC NO/PASSPORT OR ID NUMBER",
+
+to_date(nvl(bonig.get_ppt_issue_dt(x.customer_no),bonig.get_incorp_dt(x.customer_no))) "RC NO/PPT/ID ISSUE DATE",
+
+bonig.get_efass_state_code(a.ac_branch)  "EFASS STATE CODE", decode(x.customer_type, 'I', 'INDIVIDUAL', 'C', 'CORPORATE', 'BANK') CUSTOMER_TYPE
+
+FROM fcubsnig.acvw_daily_log a,
+ 
+(SELECT x.customer_no,x.address_line1,x.address_line2,x.address_line3,
+ 
+x.unique_id_name,x.unique_id_value,x.customer_type
+ 
+FROM fcubsnig.STTM_CUSTOMER x ) x
+ 
+  WHERE
+ 
+  a.user_id IN ('AAKEJU7988','AOMOZUWA1819','BONYEBU1838','CEGBUHUZ8541','CNKADI7301','GJOSHUA0292','HADAOKWE0294','JOJUADE2713','KOBE4444','KOLOKESU9513','OAMUSAN1518','OBANKOLE4049','OIJANDIP9731','OMNIFLOW','ONATHAN9574','OOCLOO3221','OOJUBANI3526','OOPUTA7429','OPADEBAY9296','OSOREMI10103','OTOKI3753','SAMUEZE5063','SOLUFEMI0293','UNKEBAKW2856','WOMOROWA5016','ASHITTEGT043','CNDUBUEGT060') and
+ 
+   a.trn_dt=misuser.curr_sys_date
+
+AND a.drcr_ind='C'  AND a.auth_stat='A' AND
+ 
+a.cust_gl='A' and x.customer_no=bonig.get_cust_no(a.ac_no)
+ 
+Union
+ 
+SELECT  to_char('00050') BANK_BDC_CODE,bonig.get_cust_no(a.ac_no) CUSTOMER_ID,
+ 
+decode(a.ac_ccy,'USD','US','GBP','GB','EUR','DE','XOF','BJ','NGN','NG','NONE') COUNTRY_CODE,
+ 
+a.ac_ccy CURRENCY_CODE,a.ac_no BENIFICIARIES_ACCT_NO,bonig.get_cust_ac_name(a.ac_no) BENIFICIARIES_NAME,
+ 
+NVL(a.fcy_amount,a.lcy_amount) AMOUNT_IN_ORIGINAL_CURR,
+ 
+NVL(bonig.get_mid_rate(ac_ccy ,misuser.curr_sys_date),'1') EXCHANGE_RATE,
+ 
+(case when  a.ac_ccy not in ('NGN','XOF') then
+ 
+NVL(bonig.get_mid_rate(ac_ccy ,misuser.curr_sys_date),'1')* a.fcy_amount else
+ 
+round(a.lcy_amount/NVL(bonig.get_mid_rate(ac_ccy ,misuser.curr_sys_date),'1'),2) end )
+ 
+USD_EQUIVALENT,
+ 
+to_char('SHORT TERM ') DURATION,
+ 
+a.value_dt VALUE_DATE,
+ 
+to_char('INFLOW') REMARKS,
+ 
+x.address_line1||' '||x.address_line2||' '||x.address_line3 "CUSTOMER ADDRESS",
+ 
+GET_BRANCH_NAME(a.ac_branch) "BRANCH NAME",a.ac_branch "BRANCH CODE",
+ 
+x.unique_id_value "RC NO/PASSPORT OR ID NUMBER",
+ 
+to_date(nvl(bonig.get_ppt_issue_dt(x.customer_no),bonig.get_incorp_dt(x.customer_no))) "RC NO/PPT/ID ISSUE DATE",
+ 
+bonig.get_efass_state_code(a.ac_branch)  "EFASS STATE CODE", decode(x.customer_type, 'I', 'INDIVIDUAL', 'C', 'CORPORATE', 'BANK') CUSTOMER_TYPE
+ 
+FROM fcubsnig.acvw_all_ac_entries a, --- fcubsnig.actb_hiostory a,
+ 
+(SELECT x.customer_no,x.address_line1,x.address_line2,address_line3,
+ 
+x.unique_id_name,x.unique_id_value, x.customer_type
+ 
+FROM fcubsnig.STTM_CUSTOMER x ) x
+ 
+  WHERE a.auth_stat = 'A' and
+ 
+  a.user_id IN ('AAKEJU7988','AOMOZUWA1819','BONYEBU1838','CEGBUHUZ8541','CNKADI7301','GJOSHUA0292','HADAOKWE0294','JOJUADE2713','KOBE4444','KOLOKESU9513','OAMUSAN1518','OBANKOLE4049','OIJANDIP9731','OMNIFLOW','ONATHAN9574','OOCLOO3221','OOJUBANI3526','OOPUTA7429','OPADEBAY9296','OSOREMI10103','OTOKI3753','SAMUEZE5063','SOLUFEMI0293','UNKEBAKW2856','WOMOROWA5016','ASHITTEGT043','CNDUBUEGT060') and
+ 
+   a.trn_dt=misuser.curr_sys_date  AND a.drcr_ind='C'  
+
+AND a.cust_gl='A' and x.customer_no=bonig.get_cust_no(a.ac_no);
+ 
+
+
+SELECT * FROM mtr_001;

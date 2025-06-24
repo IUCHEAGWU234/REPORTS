@@ -1,0 +1,11 @@
+create table newly_opened_account as
+select routing_no sort_code, a.branch_code, branch_addr1 as branch_address, 
+get_cust_bvn(cust_no)bvn, cust_ac_no, ac_desc, 
+(case when account_type = 'S' then 'SAVINGS' else 'CURRENT' end) account_type, ac_open_date, c.CUSTOMER_CATEGORY,
+get_account_segment_code(a.cust_ac_no, a.branch_code)SEG_CODE,
+get_account_segment_DESC(a.cust_ac_no, a.branch_code)SEG_DESC
+from sttm_cust_account a, sttm_branch b, STTM_CUSTOMER c  
+where a.branch_code = b.branch_code and a.cust_no=c.customer_no
+and a.ac_open_date between '11-DEC-2023' and '15-DEC-2023';
+
+select * from newly_opened_account

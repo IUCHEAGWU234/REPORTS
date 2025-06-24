@@ -1,0 +1,15 @@
+select to_char('00050 ') AS bank_code,substr(dr_account,7,8) AS customer_id,
+decode(dr_ccy,'USD','US','GBP','GB','EUR','DE','XOF','BJ','NGN','NG','NONE') AS country_code,dr_ccy AS CURRENCY_CODE
+,RPAD(REPLACE(ult_beneficiary1,'/'),'16','0') AS BENIFICIARIES_ACCT_NO,ult_beneficiary2 BENIFICIARIES_NAME,dr_amount AS AMOUNT_IN_ORIGINAL_CURR,
+bonig.get_mid_rate(dr_ccy,misuser.curr_sys_date) AS MID_RATE,
+NVL(bonig.get_mid_rate(dr_ccy,misuser.curr_sys_date),'1')*dr_amounT AS USD_EQUIVALENT,
+substr(payment_details1,6) AS PURPOSE,
+substr(payment_details1,6) AS DETAILS_OF_PURPOSE,
+to_char('SHORT TERM') AS duration ,dr_value_date AS VALUE_DATE,to_char('OUTFLOW ') AS REMARKS
+from fcubsnig.fttb_contract_master where product_code='CSTF'
+and dr_value_date=misuser.curr_sys_date
+
+
+
+
+mtr_002 script

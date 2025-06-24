@@ -1,0 +1,8 @@
+SELECT a.ac_branch,branch_name, 
+SUM(A.LCY_AMOUNT) as tot_val, COUNT(*) as TOT_KNT
+FROM acvw_all_ac_entries A,sttm_branch b
+WHERE ac_branch=branch_code 
+and SUBSTR(A.trn_ref_no,4,4) ='CQWL' 
+AND substr(A.ac_no,1,6) = '111101'
+and trn_dt between '01-mar-2023' and '31-mar-2023'
+group by A.ac_branch,branch_name

@@ -1,4 +1,5 @@
 ---ESB
+
 select * from esbuser.mul_ibt_log where trunc(request_date) >=  trunc(sysdate) - 1
 
 ----MOBILE
@@ -8,12 +9,21 @@ where a.AFFILIATE_CODE ='ENG'  and a.AFFILIATE_CODE =b.AFFILIATE_CODE
 and  a.BILLER_CODE = b.BILLER_CODE  and AGGREGATOR = 'INTERSWITCH_V2'
 and trunc(REQUEST_DATE) =  trunc(sysdate) - 1
 
-----CORAL-BET
+----CORAL_BET-----
 select a.*,b.AGGREGATOR 
 from  esbuser.bil_tran_log a, esbuser.bil_billers b 
 where a.AFFILIATE_CODE ='ENG'  and a.AFFILIATE_CODE =b.AFFILIATE_CODE
 and  a.BILLER_CODE = b.BILLER_CODE  
 and b.BILLER_CODE = 'CORAL_BET9JA'
+and trunc(REQUEST_DATE) =  trunc(sysdate) - 1
+
+
+----REMITA------
+select a.*,b.AGGREGATOR 
+from  esbuser.bil_tran_log a, esbuser.bil_billers b 
+where a.AFFILIATE_CODE ='ENG'  and a.AFFILIATE_CODE =b.AFFILIATE_CODE
+and  a.BILLER_CODE = b.BILLER_CODE  
+and b.BILLER_CODE = 'REMITA'
 and trunc(REQUEST_DATE) =  trunc(sysdate) - 1
 
 
@@ -31,5 +41,38 @@ and (payment_detail like '%AIRTIME%' or payment_detail like '%DATA%')
 and trunc(request_date) =  trunc(sysdate) - 1
 
 
+
 ----ESB FOR AGENCY BANKING
 select * from  mesb_sadc.bil_agent_log where AFFILIATE_CODE ='ENG' and trunc(request_date) = trunc(sysdate) - 1
+
+
+
+ESB LOG 
+
+HOST=eco-esbdb-scan.ecobank.group)(PORT=1521))) 
+SERVICE_NAME=esbpdb.prodnoncarddb1.prodworkloalhr.oraclevcn.com)
+USR: misuser
+PWD: ESB@misuser123$
+
+ 
+NIP INCOMING DATABASE 
+10.250.66.180:1521/nip_pdb.prodnoncarddb1.prodworkloalhr.oraclevcn.com
+ 
+usr: MISUSER
+pwd: NIPI@misuser123$
+ 
+NIP Incoming Archive Database
+10.8.185.44/srvcompassd
+port: 1521
+usr: misuser
+pwd: NIPI@misuser123$
+
+
+--SADCWARRI
+192.168.31.179
+SADC Warri on-prem:
+eco-blldb-scan.ecobank.group
+SERVICE : ENTBLLDB_PDB.prodnoncarddb1.prodworkloalhr.oraclevcn.com
+USER : MISUSER
+PASS : P$sswd999
+
